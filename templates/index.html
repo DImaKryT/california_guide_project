@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ title }}</title>
+    <style>
+        /* Стилі для приємного відображення */
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 40px; background-color: #f8f9fa; color: #333; }
+        h1 { color: #0056b3; border-bottom: 3px solid #0056b3; padding-bottom: 10px; }
+        h2 { color: #212529; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 30px; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #e9ecef; font-weight: bold; }
+        ul { list-style-type: none; padding: 0; }
+        li { background: #f1f8ff; margin-bottom: 8px; padding: 10px; border-radius: 4px; border-left: 5px solid #007bff; }
+        a { color: #007bff; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>{{ title }}</h1>
+        <p>Це демонстрація застосунку, розробленого з використанням технологій Semantic Web та відкритих даних **DBpedia** (SPARQL).</p>
+
+        <h2>🏙️ Топ-{{ cities|length }} Міст Каліфорнії</h2>
+        {% if cities %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Місто</th>
+                    <th>Населення</th>
+                    <th>Координати (Геокоординати P625)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for city in cities %}
+                <tr>
+                    <td>{{ city.city }}</td>
+                    <td>{{ "{:,}".format(city.population) }}</td>
+                    <td>{{ city.coordinates }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>❌ Помилка: Не вдалося отримати дані про міста (перевірте підключення до Wikidata).</p>
+        {% endif %}
+
+        <h2>🎓 Топ-10 Університетів Каліфорнії</h2>
+        {% if universities %}
+        <ul>
+            {% for uni in universities %}
+            <li><a href="{{ uni.uri }}" target="_blank">{{ uni.name }}</a></li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p>❌ Помилка: Не вдалося отримати дані про університети.</p>
+        {% endif %}
+    </div>
+</body>
+</html>
