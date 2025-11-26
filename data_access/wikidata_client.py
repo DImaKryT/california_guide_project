@@ -29,8 +29,8 @@ class DBpediaClient:
 
     def get_top_cities(self, limit=5):
         """
-        Запит: Повертає найбільші міста Каліфорнії за чисельністю населення з DBpedia.
-        Властивості DBpedia: dbo:city, dbo:populationTotal, geo:lat/geo:long.
+        Запит: Повертає найбільші міста Каліфорнії, включаючи округ та штат
+               для формування "нормальної" адреси.
         """
         query = f"""
         PREFIX dbo: <http://dbpedia.org/ontology/>
@@ -39,19 +39,21 @@ class DBpediaClient:
         PREFIX geo: <http://www.w3.org/2003/01/geo/wgs84_pos#>
         PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 
-        SELECT DISTINCT ?cityLabel (xsd:integer(?population) AS ?Population) ?lat ?long
+        SELECT DISTINCT ?cityLabel (xsd:integer(?population) AS ?Population) ?lat ?long ?countyLabel ?stateLabel
         WHERE 
         {{
-          ?city dbo:subdivision dbr:{self.CALIFORNIA_RESOURCE} . # Місто, що є підрозділом Каліфорнії
+          ?city dbo:subdivision dbr:{self.CALIFORNIA_RESOURCE} . 
           ?city a dbo:City .
-          ?city dbo:populationTotal ?population . # Загальне населення
+          ?city dbo:populationTotal ?population . 
           
-          OPTIONAL {{ ?city geo:lat ?lat ; geo:long ?long . }} # Географічні координати
+          OPTIONAL {{ ?city geo:lat ?lat ; geo:long ?long . }} 
+          # Додаємо округ (county) та штат (state)
+          OPTIONAL {{ ?city dbo:county ?countyResource . ?countyResource rdfs:label ?countyLabel . FILTER (lang(?countyLabel) = 'en') }}
+          OPTIONAL {{ ?city dbo:state ?stateResource . ?stateResource rdfs:label ?stateLabel . FILTER (lang(?stateLabel) = 'en') }}
           
           ?city rdfs:label ?cityLabel .
           FILTER (lang(?cityLabel) = 'en' || lang(?cityLabel) = 'uk')
           
-          # Фільтруємо нечислові або некоректні значення населення
           FILTER(datatype(?population) = xsd:integer || datatype(?population) = xsd:nonNegativeInteger)
         }}
         ORDER BY DESC(?Population)
@@ -64,13 +66,25 @@ class DBpediaClient:
         for binding in results:
             pop_value = binding.get("Population", {}).get("value")
             
-            # DBpedia повертає широту/довготу окремо
+            # 1. Форматування координат
             coords = f"{binding.get('lat', {}).get('value', 'N/A')}, {binding.get('long', {}).get('value', 'N/A')}"
             
+            # 2. Формування "нормального" рядка адреси
+            city_name = binding.get("cityLabel", {}).get("value", "N/A")
+            county_name = binding.get("countyLabel", {}).get("value", "")
+            state_name = binding.get("stateLabel", {}).get("value", "Каліфорнія")
+            
+            # Створення красивого рядка: Місто, Округ, Штат
+            if county_name:
+                formatted_address = f"{city_name}, {county_name}, {state_name}"
+            else:
+                formatted_address = f"{city_name}, {state_name}"
+            
             processed_results.append({
-                "city": binding.get("cityLabel", {}).get("value", "N/A"),
+                "city": city_name,
                 "population": int(pop_value) if pop_value and pop_value.isdigit() else 0,
-                "coordinates": coords
+                "coordinates": coords,
+                "formatted_address": formatted_address # Нове поле
             })
         return processed_results
 
@@ -102,5 +116,40 @@ class DBpediaClient:
             processed_results.append({
                 "name": binding.get("uniLabel", {}).get("value", "N/A"),
                 "uri": binding.get("uni", {}).get("value", "#")
+            })
+        return processed_results
+    def get_landmarks(self):
+        """
+        Запит: Повертає відомі пам'ятки, історичні місця або об'єкти спадщини Каліфорнії.
+        """
+        query = f"""
+        PREFIX dbo: <http://dbpedia.org/ontology/>
+        PREFIX dbr: <http://dbpedia.org/resource/>
+        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+        SELECT DISTINCT ?landmarkLabel ?landmark
+        WHERE 
+        {{
+          # Місце повинно бути розташоване у Каліфорнії (dbr:California)
+          ?landmark dbo:state dbr:{self.CALIFORNIA_RESOURCE} . 
+          
+          # Фільтруємо за типом об'єкта: Історичні місця або Місця, які мають фото
+          {{ ?landmark a dbo:HistoricPlace . }}
+          UNION
+          {{ ?landmark a dbo:Place . ?landmark dbo:thumbnail ?thumb . }} # Місця з мініатюрами, щоб не брати все підряд
+
+          ?landmark rdfs:label ?landmarkLabel .
+          
+          FILTER (lang(?landmarkLabel) = 'en' || lang(?landmarkLabel) = 'uk')
+        }}
+        LIMIT 10
+        """
+        results = self._execute_query(query)
+        
+        processed_results = []
+        for binding in results:
+            processed_results.append({
+                "name": binding.get("landmarkLabel", {}).get("value", "N/A"),
+                "uri": binding.get("landmark", {}).get("value", "#")
             })
         return processed_results

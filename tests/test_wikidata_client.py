@@ -2,7 +2,7 @@
 
 import unittest
 from unittest.mock import patch, MagicMock
-from data_access.wikidata_client import WikidataClient
+from data_access.wikidata_client import DBpediaClient
 
 # Імітація відповіді SPARQL для тестів
 MOCK_CITY_RESULTS = {
@@ -36,7 +36,7 @@ class TestWikidataClient(unittest.TestCase):
 
     def setUp(self):
         """Ініціалізація клієнта перед кожним тестом."""
-        self.client = WikidataClient()
+        self.client = DBpediaClient()
 
     @patch('data_access.wikidata_client.SPARQLWrapper.query')
     def test_get_top_cities_returns_correct_format(self, mock_query):

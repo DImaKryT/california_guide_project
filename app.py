@@ -3,7 +3,7 @@
 import os
 from flask import Flask, render_template
 # !!! ІМПОРТУЄМО DBpediaClient:
-from data_access.wikidata_client import DBpediaClient # Або from data_access.wikidata_client import DBpediaClient, якщо не перейменовували файл
+from data_access.wikidata_client import DBpediaClient
 
 app = Flask(__name__)
 # !!! Створюємо екземпляр DBpediaClient
@@ -19,13 +19,15 @@ def index():
     # 1. Отримання даних з Data Access Layer
     cities = client.get_top_cities(limit=5)
     universities = client.get_universities()
+    landmarks = client.get_landmarks()
     
     # 2. Передача даних до шаблону для візуалізації
     return render_template(
         'index.html',
         cities=cities,
         universities=universities,
-        title="Гід Штату Каліфорнія (DBpedia Project)"
+        landmarks=landmarks,
+        title="Гід штату Каліфорнія (DBpedia Project)"
     )
 
 if __name__ == '__main__':
